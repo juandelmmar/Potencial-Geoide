@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Potencial Gravitacional — Geodesia Física</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Exo+2:ital,wght@0,300;0,400;0,600;0,700;1,400&family=Share+Tech+Mono&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+/* ─── DARK THEME ──────────────────────────────────────────────── */
+:root{
+  --blue:#00c8ff;--cyan:#00f5d4;--orange:#ff6b1a;--gold:#ffd166;
+  --red:#ef4444;--green:#06d6a0;--purple:#c084fc;
+  --white:#e8f4ff;--dim:#4a6a88;
+  --bg:#020408;--bg2:#030a18;--bg3:#040d1a;
+  --panel:rgba(4,14,32,.88);--border:rgba(0,180,255,.15);--border2:rgba(0,180,255,.06);
+  --gB:0 0 22px rgba(0,200,255,.32);--gO:0 0 22px rgba(255,107,26,.38);
+  --gC:0 0 14px rgba(0,245,212,.32);--gG:0 0 14px rgba(6,214,160,.32);
+  --nav-bg:rgba(2,4,8,.84);--th-bg:#030e1e;--tr1:#040d1a;--tr2:#050f20;
+  --fhud:'Orbitron',monospace;--font:'Exo 2',sans-serif;--mono:'Share Tech Mono',monospace;
+}
+/* ─── LIGHT THEME ─────────────────────────────────────────────── */
+body.light{
+  --blue:#0066cc;--cyan:#007a88;--orange:#cc4400;--gold:#996600;
+  --red:#cc2222;--green:#006644;--purple:#6030a0;
+  --white:#0a1828;--dim:#4a6888;
+  --bg:#edf3fa;--bg2:#e2eef8;--bg3:#d8e8f5;
+  --panel:rgba(255,255,255,.92);--border:rgba(0,100,200,.2);--border2:rgba(0,100,200,.07);
+  --gB:0 0 14px rgba(0,100,200,.2);--gO:0 0 14px rgba(200,60,0,.2);
+  --gC:0 0 10px rgba(0,120,136,.2);--gG:0 0 10px rgba(0,100,70,.2);
+  --nav-bg:rgba(235,245,255,.92);--th-bg:#d0e4f4;--tr1:#edf3fa;--tr2:#e2eef8;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--white);font-family:var(--font);overflow-x:hidden;transition:background .35s,color .35s}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--dim);border-radius:3px}
+
+/* ─── CONSTELACIONES ──────────────────────────────────────────── */
+#const-canvas{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.6;transition:opacity .4s}
+body.light #const-canvas{opacity:.14}
+
+/* ─── NAV ─────────────────────────────────────────────────────── */
+nav{position:fixed;top:0;left:0;right:0;z-index:999;display:flex;align-items:center;justify-content:space-between;padding:11px 28px;background:var(--nav-bg);backdrop-filter:blur(16px);border-bottom:1px solid var(--border)}
+.nav-logo{font-family:var(--fhud);font-size:11px;letter-spacing:4px;color:var(--blue);text-decoration:none}
+.nav-links{display:flex;gap:4px;align-items:center}
+.nav-links a{font-family:var(--fhud);font-size:8px;letter-spacing:2px;color:var(--dim);text-decoration:none;padding:6px 11px;border:1px solid transparent;border-radius:6px;transition:all .22s;text-transform:uppercase}
+.nav-links a:hover{color:var(--blue);border-color:var(--border);background:rgba(0,100,200,.06)}
+#tbtn{display:flex;align-items:center;gap:7px;padding:7px 13px;border-radius:20px;cursor:pointer;font-family:var(--fhud);font-size:8px;letter-spacing:2px;border:1px solid var(--border);background:var(--panel);color:var(--blue);transition:all .3s;white-space:nowrap}
+#tbtn:hover{box-shadow:var(--gB);border-color:var(--blue)}
+#tbtn .ti{font-size:13px}
+body.light #tbtn .dk{display:none}
+body:not(.light) #tbtn .lt{display:none}
+
+/* ─── HERO ────────────────────────────────────────────────────── */
+#hero{position:relative;height:100vh;min-height:640px;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden}
+.hero-bg{position:absolute;inset:0;z-index:1;background:radial-gradient(ellipse 70% 80% at 50% 50%,rgba(0,30,80,.52) 0%,rgba(2,4,8,.84) 68%),url('https://upload.wikimedia.org/wikipedia/commons/thumb/9/97/The_Earth_seen_from_Apollo_17.jpg/1280px-The_Earth_seen_from_Apollo_17.jpg') center/cover no-repeat;transition:background .4s}
+body.light .hero-bg{background:radial-gradient(ellipse 70% 80% at 50% 50%,rgba(100,160,255,.35) 0%,rgba(215,232,252,.72) 68%),url('https://upload.wikimedia.org/wikipedia/commons/thumb/9/97/The_Earth_seen_from_Apollo_17.jpg/1280px-The_Earth_seen_from_Apollo_17.jpg') center/cover no-repeat}
+#sc{position:absolute;inset:0;z-index:2;pointer-events:none}
+.hc{position:relative;z-index:3;text-align:center;padding:0 20px}
+.badge{display:inline-flex;align-items:center;gap:10px;font-family:var(--fhud);font-size:10px;letter-spacing:5px;color:var(--orange);text-transform:uppercase;margin-bottom:18px;animation:bp 3s ease-in-out infinite}
+.badge::before,.badge::after{content:'◆';font-size:5px;color:var(--gold)}
+@keyframes bp{0%,100%{opacity:.7}50%{opacity:1;text-shadow:var(--gO)}}
+.hero-title{font-family:var(--fhud);font-weight:900;font-size:clamp(30px,7vw,72px);letter-spacing:5px;line-height:1.05;background:linear-gradient(135deg,#fff 0%,var(--blue) 40%,var(--cyan) 70%,#fff 100%);background-size:200%;-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;animation:sh 7s linear infinite;margin-bottom:10px}
+@keyframes sh{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+.hero-sub{font-size:clamp(13px,2vw,17px);font-weight:300;letter-spacing:4px;color:rgba(200,220,255,.7);text-transform:uppercase;margin-bottom:6px}
+.hero-credit{font-family:var(--mono);font-size:13px;color:var(--gold);letter-spacing:2px;margin-bottom:32px}
+.hero-credit span{color:var(--orange)}
+.hero-formula{display:inline-block;background:rgba(0,200,255,.07);border:1px solid rgba(0,200,255,.2);border-radius:10px;padding:13px 26px;font-family:var(--mono);font-size:clamp(11px,1.65vw,15.5px);color:var(--cyan);margin-bottom:36px;letter-spacing:.5px}
+.scroll-cta{display:flex;flex-direction:column;align-items:center;gap:8px;cursor:pointer;text-decoration:none;animation:fl 2.5s ease-in-out infinite}
+.scroll-cta span{font-family:var(--fhud);font-size:9px;letter-spacing:3px;color:var(--dim);text-transform:uppercase}
+.s-arr{width:26px;height:26px;border-right:2px solid var(--blue);border-bottom:2px solid var(--blue);transform:rotate(45deg);margin-top:-4px}
+@keyframes fl{0%,100%{transform:translateY(0)}50%{transform:translateY(8px)}}
+.hero-line{position:absolute;bottom:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--blue) 25%,var(--cyan) 50%,var(--blue) 75%,transparent);box-shadow:var(--gB)}
+
+/* ─── SECCIONES BASE ─────────────────────────────────────────── */
+#calculadora{min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding:90px 20px 60px;position:relative;z-index:1}
+#calculadora::before{content:'';position:absolute;inset:0;z-index:0;background:radial-gradient(ellipse 60% 40% at 20% 50%,rgba(0,40,100,.25) 0%,transparent 70%),linear-gradient(180deg,var(--bg) 0%,var(--bg2) 100%)}
+.ci{position:relative;z-index:1;max-width:920px;margin:0 auto;width:100%}
+.sec-badge{font-family:var(--fhud);font-size:9px;letter-spacing:5px;color:var(--blue);text-transform:uppercase;display:flex;align-items:center;gap:10px;margin-bottom:20px}
+.sec-badge::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--border),transparent)}
+.sec-title{font-family:var(--fhud);font-size:clamp(18px,3.2vw,28px);letter-spacing:3px;color:var(--white);margin-bottom:6px;text-transform:uppercase}
+.sec-lead{font-size:14.5px;color:var(--dim);letter-spacing:1px;margin-bottom:24px}
+.glow-line{height:1px;margin-bottom:28px;background:linear-gradient(90deg,transparent,var(--blue) 25%,var(--cyan) 50%,var(--blue) 75%,transparent);box-shadow:var(--gB)}
+
+/* ─── INPUT CARD ─────────────────────────────────────────────── */
+.icard{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:34px;backdrop-filter:blur(20px);position:relative;overflow:hidden;box-shadow:0 0 60px rgba(0,100,200,.05)}
+.icard::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--blue),var(--cyan),var(--blue));box-shadow:var(--gB)}
+.inp-row{display:flex;align-items:center;gap:24px;flex-wrap:wrap;margin-bottom:26px}
+.ig{display:flex;align-items:center;gap:11px}
+.ig label{font-family:var(--fhud);font-size:22px;color:var(--blue)}
+.hi{width:140px;padding:12px 16px;background:rgba(0,200,255,.06);border:1px solid rgba(0,200,255,.3);border-radius:8px;color:var(--white);font-family:var(--mono);font-size:22px;text-align:center;outline:none;transition:all .3s}
+body.light .hi{background:rgba(0,100,200,.06);border-color:rgba(0,100,200,.25)}
+.hi:focus{border-color:var(--cyan);box-shadow:var(--gC)}
+.hi::-webkit-inner-spin-button{-webkit-appearance:none}
+.iu{font-family:var(--mono);color:var(--dim);font-size:20px}
+.hg{display:flex;flex-direction:column;gap:6px}
+.hl{font-family:var(--fhud);font-size:9px;letter-spacing:3px;color:var(--dim);text-transform:uppercase}
+.hbs{display:flex;gap:6px}
+.hb{padding:10px 22px;border-radius:8px;cursor:pointer;font-family:var(--fhud);font-size:11px;letter-spacing:2px;background:rgba(0,200,255,.05);border:1px solid var(--border);color:var(--dim);transition:all .25s;text-transform:uppercase}
+.hb.on{background:rgba(0,200,255,.15);border-color:var(--blue);color:var(--blue);box-shadow:var(--gB)}
+.rd{font-family:var(--mono);font-size:14.5px;color:var(--cyan);min-width:250px}
+.rl{font-size:9px;letter-spacing:2px;color:var(--dim);display:block;margin-bottom:4px}
+.btn-row{display:flex;gap:12px;flex-wrap:wrap}
+.btn{padding:14px 28px;border-radius:10px;cursor:pointer;font-family:var(--fhud);font-size:11px;letter-spacing:3px;text-transform:uppercase;border:1px solid;transition:all .3s;position:relative;overflow:hidden}
+.btn:hover{transform:translateY(-2px)}
+.btn:active{transform:translateY(0)}
+.bc{background:linear-gradient(135deg,rgba(0,200,255,.18),rgba(0,245,212,.08));border-color:var(--cyan);color:var(--cyan);flex:1;min-width:190px;font-size:13px}
+.bc:hover{box-shadow:var(--gC),0 0 40px rgba(0,245,212,.1)}
+.bt{background:linear-gradient(135deg,rgba(255,107,26,.12),rgba(255,209,102,.06));border-color:var(--orange);color:var(--orange)}
+.bt:hover{box-shadow:var(--gO)}
+.bs{background:linear-gradient(135deg,rgba(130,60,255,.18),rgba(60,100,255,.08));border-color:rgba(160,80,255,.6);color:var(--purple)}
+.bs:hover{box-shadow:0 0 24px rgba(160,80,255,.4)}
+.spinner{display:none;width:22px;height:22px;margin:auto 0;border:2px solid rgba(0,200,255,.2);border-top-color:var(--cyan);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ─── RESULTADOS ─────────────────────────────────────────────── */
+#resultados{padding:0 20px 60px;display:none;position:relative;z-index:1;animation:fu .5s ease}
+@keyframes fu{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+.ri{max-width:920px;margin:0 auto}
+.geo-bar{display:flex;gap:16px;flex-wrap:wrap;padding:13px 20px;margin-bottom:24px;background:rgba(0,200,255,.04);border:1px solid var(--border);border-radius:10px;font-family:var(--mono);font-size:12.5px}
+body.light .geo-bar{background:rgba(0,100,200,.04)}
+.gi{display:flex;gap:8px;align-items:center;color:var(--dim)}
+.gi b{color:var(--blue)}
+.gi .unit{font-weight:700}
+
+/* cards */
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:24px}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:22px 20px;backdrop-filter:blur(12px);position:relative;overflow:hidden;transition:transform .3s,box-shadow .3s}
+.card:hover{transform:translateY(-3px)}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.ce::before{background:var(--blue);box-shadow:var(--gB)}
+.ca::before{background:var(--cyan);box-shadow:var(--gC)}
+.ci2::before{background:var(--orange);box-shadow:var(--gO)}
+.ct::before{background:linear-gradient(90deg,var(--blue),var(--cyan),var(--orange))}
+.cn::before{background:var(--green);box-shadow:var(--gG)}
+.cl{font-family:var(--fhud);font-size:9px;letter-spacing:3px;text-transform:uppercase;margin-bottom:10px}
+.ce .cl{color:var(--blue)}.ca .cl{color:var(--cyan)}.ci2 .cl{color:var(--orange)}.ct .cl{color:var(--gold)}.cn .cl{color:var(--green)}
+.cv{font-family:var(--mono);font-size:clamp(12px,2vw,16.5px);line-height:1.3}
+.ce .cv{color:var(--blue)}.ca .cv{color:var(--cyan)}.ci2 .cv{color:var(--orange)}.ct .cv{color:var(--white);font-size:clamp(15.5px,2.75vw,22px)}.cn .cv{color:var(--green)}
+.cu{font-size:10px;font-weight:700;color:var(--dim);margin-top:5px}
+
+/* tabla ordenes */
+.obs{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:28px;backdrop-filter:blur(12px)}
+.bt2{font-family:var(--fhud);font-size:9px;letter-spacing:4px;color:var(--blue);text-transform:uppercase;display:flex;align-items:center;gap:10px;margin-bottom:20px}
+.bt2::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--border),transparent)}
+table.ord{width:100%;border-collapse:collapse}
+table.ord th{font-family:var(--fhud);font-size:8.5px;letter-spacing:2px;text-transform:uppercase;color:var(--dim);padding:10px 14px;text-align:left;border-bottom:1px solid var(--border)}
+table.ord td{font-family:var(--mono);font-size:14px;padding:12px 14px;border-bottom:1px solid var(--border2)}
+table.ord tr:last-child td{border-bottom:none;font-weight:700}
+table.ord tr:hover td{background:rgba(0,100,200,.03)}
+table.ord .desc{color:var(--dim);font-size:13px;font-family:var(--font)}
+table.ord .uc{font-size:11px;font-weight:700;color:var(--dim)}
+.bdg{display:inline-block;padding:3px 9px;border-radius:4px;font-family:var(--fhud);font-size:9px;letter-spacing:1px;background:rgba(0,200,255,.08);border:1px solid var(--border);color:var(--blue)}
+.bdg.g{background:rgba(255,209,102,.08);border-color:rgba(255,209,102,.3);color:var(--gold)}
+
+/* botón LaTeX */
+.btn-latex{display:inline-flex;align-items:center;gap:8px;margin-top:18px;padding:11px 22px;border-radius:8px;cursor:pointer;font-family:var(--fhud);font-size:10px;letter-spacing:2px;text-transform:uppercase;border:1px solid var(--green);color:var(--green);background:rgba(6,214,160,.08);transition:all .3s}
+.btn-latex:hover{box-shadow:var(--gG);transform:translateY(-1px)}
+
+/* NOAA badge */
+.noaa-row{display:flex;align-items:center;gap:12px;margin-top:14px;flex-wrap:wrap}
+.btn-noaa{display:inline-flex;align-items:center;gap:7px;padding:9px 18px;border-radius:8px;cursor:pointer;font-family:var(--fhud);font-size:9px;letter-spacing:2px;text-transform:uppercase;border:1px solid rgba(0,200,255,.35);color:var(--blue);background:rgba(0,200,255,.06);transition:all .3s}
+.btn-noaa:hover{box-shadow:var(--gB)}
+.noaa-result{font-family:var(--mono);font-size:13px;color:var(--cyan)}
+.noaa-src{font-size:10px;color:var(--dim)}
+
+/* ─── TABLA COMPLETA ─────────────────────────────────────────── */
+#tsec{padding:60px 20px;background:linear-gradient(180deg,var(--bg2) 0%,var(--bg3) 100%);display:none;position:relative;z-index:1}
+#tsec.show{display:block;animation:fu .5s ease}
+.tw{max-width:1120px;margin:0 auto}
+.tscr{overflow-x:auto;margin-top:20px;border-radius:12px;border:1px solid var(--border)}
+table.full{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:12.5px}
+table.full thead th{font-family:var(--fhud);font-size:8.5px;letter-spacing:2px;text-transform:uppercase;padding:12px 12px;text-align:right;border-bottom:1px solid var(--border);background:var(--th-bg);white-space:nowrap;position:sticky;top:0;z-index:2}
+table.full thead th:first-child{text-align:center;color:var(--blue)}
+table.full thead th.he{color:var(--blue)}table.full thead th.ha{color:var(--cyan)}table.full thead th.hi{color:var(--orange)}table.full thead th.ht{color:var(--gold)}table.full thead th.hn{color:var(--green)}
+table.full thead th small{font-weight:700;font-size:9px}
+table.full tbody tr{transition:background .12s}
+table.full tbody tr:nth-child(odd){background:var(--tr1)}
+table.full tbody tr:nth-child(even){background:var(--tr2)}
+table.full tbody tr:hover{background:rgba(0,100,200,.06)}
+table.full tbody td{padding:8px 12px;text-align:right;border-bottom:1px solid var(--border2);color:var(--white)}
+table.full tbody td:first-child{text-align:center;font-family:var(--fhud);font-size:13px;font-weight:700;color:var(--blue)}
+table.full tbody td.ve{color:var(--blue)}table.full tbody td.va{color:var(--cyan)}table.full tbody td.vi{color:var(--orange)}table.full tbody td.vt{color:var(--gold);font-weight:700}table.full tbody td.vn{color:var(--green)}
+
+/* ─── SIMULADOR 3D ───────────────────────────────────────────── */
+#simulador{position:relative;height:100vh;min-height:700px;overflow:hidden;background:#000;z-index:1}
+#sim-canvas{display:block;width:100%;height:100%}
+.sim-hud{position:absolute;inset:0;pointer-events:none;display:flex;flex-direction:column;justify-content:space-between}
+.sim-top{background:linear-gradient(to bottom,rgba(2,4,8,.9) 0%,transparent 100%);padding:24px 32px 60px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.sim-top-left{}
+.stt{font-family:var(--fhud);font-size:11px;letter-spacing:5px;color:var(--blue);text-transform:uppercase;margin-bottom:4px}
+.sts{font-family:var(--mono);font-size:10px;color:rgba(140,180,220,.5)}
+/* controles HUD (pointer-events activos) */
+.sim-controls{display:flex;gap:8px;flex-wrap:wrap;pointer-events:all}
+.sim-btn{padding:7px 14px;border-radius:7px;cursor:pointer;font-family:var(--fhud);font-size:8px;letter-spacing:2px;text-transform:uppercase;border:1px solid var(--border);background:rgba(2,8,20,.75);color:var(--dim);transition:all .25s;backdrop-filter:blur(8px)}
+.sim-btn:hover{color:var(--blue);border-color:var(--blue);box-shadow:var(--gB)}
+.sim-btn.active{color:var(--cyan);border-color:var(--cyan);background:rgba(0,200,255,.12);box-shadow:var(--gC)}
+
+.sim-bot{background:linear-gradient(to top,rgba(2,4,8,.92) 0%,transparent 100%);padding:60px 36px 28px;display:flex;gap:28px;flex-wrap:wrap}
+.sd .sl{font-family:var(--fhud);font-size:8px;letter-spacing:2px;color:rgba(130,170,210,.45);text-transform:uppercase;display:block;margin-bottom:3px}
+.sd .sv{font-family:var(--mono);font-size:14px;color:var(--cyan)}
+
+/* Loading */
+.sim-loading{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;background:#000;z-index:5;transition:opacity .6s}
+.sim-loading.hidden{opacity:0;pointer-events:none}
+.sim-loading p{font-family:var(--mono);font-size:11px;color:rgba(140,200,220,.45);letter-spacing:2px}
+.sim-loading .sub{font-size:9px;color:rgba(100,150,180,.3)}
+.or{width:70px;height:70px;border-radius:50%;border:2px solid rgba(0,200,255,.1);border-top-color:var(--cyan);animation:spin 1.2s linear infinite}
+
+/* Lat indicator */
+.lat-ind{position:absolute;right:28px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;align-items:center;gap:4px}
+.lat-bar{width:3px;height:180px;background:linear-gradient(to bottom,transparent,var(--blue) 40%,var(--cyan) 60%,transparent);border-radius:2px;position:relative}
+.lat-dot{position:absolute;left:50%;transform:translate(-50%,-50%);width:10px;height:10px;border-radius:50%;background:var(--orange);box-shadow:var(--gO)}
+.lat-lbl{font-family:var(--fhud);font-size:9px;letter-spacing:1px;color:var(--orange);margin-top:4px}
+
+/* Color legend del heatmap */
+.heat-legend{position:absolute;left:24px;top:50%;transform:translateY(-50%);pointer-events:none;display:none;flex-direction:column;align-items:center;gap:6px}
+.heat-legend.show{display:flex}
+.hl-title{font-family:var(--fhud);font-size:7px;letter-spacing:2px;color:var(--dim);text-transform:uppercase;writing-mode:vertical-rl;transform:rotate(180deg)}
+.hl-bar{width:14px;height:160px;border-radius:7px;background:linear-gradient(to top,#0000ff,#00aaff,#00ffdd,#aaff00,#ffdd00,#ff4400)}
+.hl-labels{display:flex;flex-direction:column;justify-content:space-between;height:160px}
+.hl-labels span{font-family:var(--mono);font-size:9px;color:var(--dim)}
+
+/* ─── FOOTER ─────────────────────────────────────────────────── */
+footer{text-align:center;padding:42px 20px;border-top:1px solid var(--border);background:var(--bg);position:relative;z-index:1}
+footer p{font-family:var(--mono);font-size:10.5px;color:var(--dim);letter-spacing:2px;line-height:1.9}
+footer b{color:var(--blue)}
+
+@media(max-width:640px){
+  nav{padding:10px 14px}
+  .inp-row,.btn-row{flex-direction:column;align-items:flex-start}
+  .bc{min-width:unset}
+  .sim-bot{gap:14px}
+  #tbtn span.tk{display:none}
+}
+</style>
+</head>
+<body>
+<canvas id="const-canvas"></canvas>
+
+<!-- NAV -->
+<nav>
+  <a class="nav-logo" href="#hero">&#9672; POTENCIAL GRAVITACIONAL</a>
+  <div class="nav-links">
+    <a href="#calculadora">Calcular</a>
+    <a href="#resultados" id="nv-r" style="display:none">Resultados</a>
+    <a href="#tsec" id="nv-t" style="display:none">Tabla</a>
+    <a href="#simulador">Simulador 3D</a>
+    <button id="tbtn" onclick="toggleTheme()">
+      <span class="ti dk">🌙</span><span class="ti lt">☀️</span>
+      <span class="tk dk">MODO CLARO</span><span class="tk lt">MODO OSCURO</span>
+    </button>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section id="hero">
+  <div class="hero-bg"></div>
+  <canvas id="sc"></canvas>
+  <div class="hc">
+    <div class="badge">Sistema Geodesico Computacional</div>
+    <h1 class="hero-title">POTENCIAL<br>GRAVITACIONAL</h1>
+    <p class="hero-sub">Geodesia Fisica &middot; Armonicos Esfericos &middot; GRS-80 / WGS-84</p>
+    <p class="hero-credit">Presentado para: <span>Ing. Miguel Avila</span> &mdash; Universidad Distrital Francisco Jose de Caldas</p>
+    <p class="hero-credit">Elaborado por los cerebros: <span>Juan Aragón-20202025077 <span>Sebastian Noguera-20202025022 <span>Stiven-Romero-20201015115</span> &mdash;Geodesia Celestial</p>
+
+    <div class="hero-formula">V(r,&phi;) = KM/r &times; [ Esfera + Achatamiento + Asimetria Ecuatorial ]</div>
+
+    <a class="scroll-cta" href="#calculadora">
+      <span>Iniciar Calculo</span><div class="s-arr"></div>
+    </a>
+  </div>
+  <div class="hero-line"></div>
+</section>
+
+<!-- CALCULADORA -->
+<section id="calculadora">
+  <div class="ci">
+    <div class="sec-badge">Modulo de Calculo</div>
+    <h2 class="sec-title">Potencial Gravitacional</h2>
+    <p class="sec-lead">Ingrese la latitud geodesica y el hemisferio. El sistema calcula r, W, V y la undulacion del geoide.</p>
+    <div class="glow-line"></div>
+    <div class="icard">
+      <div class="inp-row">
+        <div class="ig">
+          <label>&phi; =</label>
+          <input id="inp" class="hi" type="number" min="0" max="90" step="0.0001" value="10" placeholder="0-90"/>
+          <span class="iu">&deg;</span>
+        </div>
+        <div class="hg">
+          <span class="hl">Hemisferio</span>
+          <div class="hbs">
+            <button class="hb on" id="bN" onclick="setH('N')">NORTE</button>
+            <button class="hb"    id="bS" onclick="setH('S')">SUR</button>
+          </div>
+        </div>
+        <div class="rd">
+          <span class="rl">RADIO PARAMETRIZADO r = a(1 &minus; f sin&sup2;&phi;)</span>
+          <span id="rv">-- ingrese latitud y calcule --</span>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn bc" onclick="doCalc()">&#9654; CALCULAR POTENCIAL</button>
+        <div class="spinner" id="spin"></div>
+        <button class="btn bt" onclick="toggleTab()">&#8801; TABLA 0&deg;-90&deg;</button>
+        <button class="btn bs" onclick="goSim()">&#9711; SIMULADOR 3D</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- RESULTADOS -->
+<section id="resultados">
+  <div class="ri">
+    <div class="sec-badge">Resultados</div>
+    <div class="geo-bar">
+      <span class="gi">&phi; = <b id="gp">--</b></span>
+      <span class="gi">r = <b id="gr">--</b> <span class="unit">m</span></span>
+      <span class="gi">KM/r = <b id="gk">--</b> <span class="unit">J&middot;kg&minus;&sup1;</span></span>
+      <span class="gi">W = <b id="gw">--</b> <span class="unit">J&middot;kg&minus;&sup1;</span></span>
+    </div>
+
+    <!-- 5 cards: esfera, achatamiento, asimetria, total, geoide -->
+    <div class="cards">
+      <div class="card ce">
+        <div class="cl">Aporte Esfera (Ord. 0+2)</div>
+        <div class="cv" id="ve">--</div>
+        <div class="cu">J &middot; kg&minus;&sup1;</div>
+      </div>
+      <div class="card ca">
+        <div class="cl">Aporte Achatamiento (Ord. 3+5)</div>
+        <div class="cv" id="va">--</div>
+        <div class="cu">J &middot; kg&minus;&sup1;</div>
+      </div>
+      <div class="card ci2">
+        <div class="cl">Aporte Asimetria Ecuatorial (Ord. 4)</div>
+        <div class="cv" id="vi">--</div>
+        <div class="cu">J &middot; kg&minus;&sup1;</div>
+      </div>
+      <div class="card ct">
+        <div class="cl">&#11088; Potencial Total V(r,&phi;)</div>
+        <div class="cv" id="vt">--</div>
+        <div class="cu">J &middot; kg&minus;&sup1;</div>
+      </div>
+      <div class="card cn">
+        <div class="cl">&#9670; Undulacion Geoide N (zonal)</div>
+        <div class="cv" id="vn">--</div>
+        <div class="cu">metros</div>
+      </div>
+    </div>
+
+    <!-- Desglose ordenes -->
+    <div class="obs">
+      <div class="bt2">Desglose por Ordenes de Armonicos Esfericos</div>
+      <table class="ord">
+        <thead><tr><th>Orden</th><th>Descripcion</th><th style="text-align:right">Aporte</th><th style="text-align:right">Unidad</th></tr></thead>
+        <tbody>
+          <tr><td><span class="bdg">ORDEN 0</span></td><td class="desc">Esfera pura KM/r</td><td style="text-align:right;color:var(--blue)" id="o0">--</td><td class="uc">J&middot;kg&minus;&sup1;</td></tr>
+          <tr><td><span class="bdg">ORDEN 2</span></td><td class="desc">(A&#8322;/r²)[⅓ − sin²&phi;] &times; KM/r</td><td style="text-align:right;color:var(--cyan)" id="o2">--</td><td class="uc">J&middot;kg&minus;&sup1;</td></tr>
+          <tr><td><span class="bdg">ORDEN 3+5</span></td><td class="desc">Achatamiento A&#8323;, A&#8325; &times; KM/r</td><td style="text-align:right;color:var(--cyan)" id="o35">--</td><td class="uc">J&middot;kg&minus;&sup1;</td></tr>
+          <tr><td><span class="bdg">ORDEN 4</span></td><td class="desc">Asimetria (A&#8324;/r&#8308;)[&hellip;] &times; KM/r</td><td style="text-align:right;color:var(--orange)" id="o4">--</td><td class="uc">J&middot;kg&minus;&sup1;</td></tr>
+          <tr><td><span class="bdg">CENTRIFUGO</span></td><td class="desc">&frac12;&omega;²r²cos²&phi;</td><td style="text-align:right;color:var(--purple)" id="oz">--</td><td class="uc">J&middot;kg&minus;&sup1;</td></tr>
+          <tr style="border-top:1px solid var(--border)"><td><span class="bdg g">TOTAL W</span></td><td class="desc">W = V + Z &nbsp;|&nbsp; N = (W &minus; W&#8320;)/&gamma;</td><td style="text-align:right;color:var(--gold);font-size:16px" id="ot">--</td><td class="uc" style="color:var(--gold)">J&middot;kg&minus;&sup1;</td></tr>
+        </tbody>
+      </table>
+
+      <!-- Botón LaTeX + consulta NOAA -->
+      <div style="margin-top:20px;display:flex;flex-wrap:wrap;gap:14px;align-items:center">
+        <button class="btn-latex" onclick="downloadLatex()">
+          <span>&#8659;</span> EXPORTAR LaTeX (.tex)
+        </button>
+        <div class="noaa-row">
+          <button class="btn-noaa" onclick="queryNOAA()" id="noaa-btn">
+            &#9670; CONSULTAR NOAA GEOID18
+          </button>
+          <span class="noaa-result" id="noaa-val" style="display:none"></span>
+          <span class="noaa-src"  id="noaa-src" style="display:none"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TABLA COMPLETA -->
+<section id="tsec">
+  <div class="tw">
+    <div class="sec-badge">Tabla Completa</div>
+    <h2 class="sec-title">Potencial por Latitud 0° a 90° Norte</h2>
+    <p class="sec-lead">GRS-80/WGS-84 · KM = 3.986 004 418×10¹⁴ m³s⁻² · a = 6 378 137 m · Incluye termino centrifugo y undulacion zonal del geoide</p>
+    <div class="glow-line"></div>
+    <div class="tscr">
+      <table class="full">
+        <thead>
+          <tr>
+            <th>φ (°)</th>
+            <th>r <small>(m)</small></th>
+            <th>KM/r <small>(J·kg⁻¹)</small></th>
+            <th class="he">Aporte Esfera<br><small>J·kg⁻¹</small></th>
+            <th class="ha">Aporte Achatamiento<br><small>J·kg⁻¹</small></th>
+            <th class="hi">Aporte Asimetría<br><small>J·kg⁻¹</small></th>
+            <th class="ht">V Total<br><small>J·kg⁻¹</small></th>
+            <th class="hn">N Zonal<br><small>metros</small></th>
+          </tr>
+        </thead>
+        <tbody id="tb"><tr><td colspan="8" style="text-align:center;padding:40px;color:var(--dim)">Cargando...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- SIMULADOR 3D -->
+<section id="simulador">
+  <div class="sim-loading" id="sld">
+    <div class="or"></div>
+    <p>INICIALIZANDO SIMULADOR 3D</p>
+    <p class="sub" id="sld-sub">Cargando texturas NASA...</p>
+  </div>
+  <canvas id="sim-canvas"></canvas>
+  <div class="sim-hud">
+    <div class="sim-top">
+      <div class="sim-top-left">
+        <div class="stt">&#9711; Simulador 3D — Potencial Gravitacional Terrestre</div>
+        <div class="sts">GRS-80 · Three.js r128 · NASA Blue Marble · Arrastra para rotar</div>
+      <div class="sts" id="sim-exag" style="color:var(--gold);margin-top:4px"></div>
+      </div>
+      <div class="sim-controls">
+        <button class="sim-btn active" id="btn-tex"  onclick="simMode('tex')">&#127758; TEXTURA</button>
+        <button class="sim-btn"        id="btn-heat" onclick="simMode('heat')">&#127777; GEOIDE</button>
+      </div>
+    </div>
+    <div class="sim-bot">
+      <div class="sd"><span class="sl">Latitud</span><span class="sv" id="sp">--</span></div>
+      <div class="sd"><span class="sl">Radio r</span><span class="sv" id="sr">--</span></div>
+      <div class="sd"><span class="sl">V(r,&phi;)</span><span class="sv" id="sv">--</span></div>
+      <div class="sd"><span class="sl">N Zonal</span><span class="sv" id="snz">--</span></div>
+      <div class="sd"><span class="sl">Hemisferio</span><span class="sv" id="sh">NORTE</span></div>
+    </div>
+    <div class="lat-ind">
+      <div class="lat-bar"><div class="lat-dot" id="ld" style="top:50%"></div></div>
+      <div class="lat-lbl" id="ll">0°</div>
+    </div>
+    <div class="heat-legend" id="heat-legend">
+      <div class="hl-title">N (metros)</div>
+      <div class="hl-bar"></div>
+      <div class="hl-labels">
+        <span id="hl-max">+80</span>
+        <span>  0</span>
+        <span id="hl-min">-100</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <p>
+    <b>Potencial Gravitacional Terrestre</b> — Aplicativo Web<br>
+    Universidad Distrital Francisco Jose de Caldas &middot; Ingenieria Catastral y Geodesia<br>
+    Geodesia Fisica &middot; Presentado para: <b>Ing. Miguel Antonio Avila Angulo</b><br>
+    Modelo GRS-80/WGS-84 &middot; Heiskanen &amp; Moritz, Physical Geodesy (1967)
+  </p>
+</footer>
+
+<script>
+"use strict";
+let HEM='N',lastD=null,tabOK=false,simInit=false,simAnim=null,simScene=null,latGrp=null;
+let heatMesh=null,earthMesh=null,cloudMesh=null,atmMesh=null,glowMesh=null,geoidGrid=null,geoidIdx=null,geoidLoaded=false;
+let currentMode='tex';
+
+const $=id=>document.getElementById(id);
+const set=(id,v)=>{const e=$(id);if(e)e.textContent=v;};
+function fE(v){return v.toExponential(8);}
+function fN(v,d=4){return v.toLocaleString('de-DE',{maximumFractionDigits:d,minimumFractionDigits:2});}
+function fM(v){return v.toLocaleString('de-DE',{maximumFractionDigits:3,minimumFractionDigits:3});}
+
+/* ══ TEMA ══════════════════════════════════════════════════════ */
+function toggleTheme(){
+  document.body.classList.toggle('light');
+  localStorage.setItem('theme',document.body.classList.contains('light')?'light':'dark');
+}
+if(localStorage.getItem('theme')==='light') document.body.classList.add('light');
+
+/* ══ CONSTELACIONES ════════════════════════════════════════════ */
+(function(){
+  const cv=$('const-canvas'),ctx=cv.getContext('2d');
+  let W,H,stars=[],conns=[];
+  function sr(s){let x=Math.sin(s+1)*10000;return x-Math.floor(x);}
+  function resize(){
+    W=cv.width=window.innerWidth; H=cv.height=window.innerHeight;
+    stars=[];
+    for(let i=0;i<130;i++) stars.push({x:sr(i*3)*W,y:sr(i*3+1)*H,r:sr(i*3+2)*1.4+.3,o:sr(i*3+.5)*.7+.2,tw:sr(i)*.009+.002,ph:sr(i*2)*Math.PI*2});
+    conns=[];
+    const MD=W*.11;
+    for(let i=0;i<stars.length;i++){
+      let lk=0;
+      for(let j=i+1;j<stars.length&&lk<3;j++){
+        const dx=stars[i].x-stars[j].x,dy=stars[i].y-stars[j].y;
+        const d=Math.sqrt(dx*dx+dy*dy);
+        if(d<MD&&sr(i*j+7)>.74){conns.push([i,j,d/MD]);lk++;}
+      }
+    }
+  }
+  let t=0;
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    const light=document.body.classList.contains('light');
+    const sc=light?[80,140,200]:[180,220,255];
+    t+=.007;
+    conns.forEach(([i,j,r])=>{
+      const a=(0.06+.04*Math.sin(t+r*3))*(light?.3:1);
+      ctx.beginPath();ctx.moveTo(stars[i].x,stars[i].y);ctx.lineTo(stars[j].x,stars[j].y);
+      ctx.strokeStyle=`rgba(${sc[0]},${sc[1]},${sc[2]},${a})`;ctx.lineWidth=.45;ctx.stroke();
+    });
+    stars.forEach(s=>{
+      const fl=.5+.5*Math.sin(t*s.tw*80+s.ph);
+      const a=s.o*fl*(light?.45:1);
+      if(s.r>1){ctx.beginPath();ctx.arc(s.x,s.y,s.r*2.4,0,Math.PI*2);ctx.fillStyle=`rgba(${sc[0]},${sc[1]},${sc[2]},${a*.14})`;ctx.fill();}
+      ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);
+      ctx.fillStyle=`rgba(${sc[0]},${sc[1]},${sc[2]},${a})`;ctx.fill();
+    });
+    requestAnimationFrame(draw);
+  }
+  window.addEventListener('resize',resize);
+  resize();draw();
+})();
+
+/* ══ ESTRELLAS HERO ════════════════════════════════════════════ */
+(function(){
+  const c=$('sc'),cx=c.getContext('2d');let W,H,s=[];
+  function r(){W=c.width=window.innerWidth;H=c.height=window.innerHeight;}
+  function m(){s=[];for(let i=0;i<220;i++)s.push({x:Math.random()*W,y:Math.random()*H,r:Math.random()*1.4+.2,o:Math.random(),sp:Math.random()*.006+.001,d:1});}
+  function d(){cx.clearRect(0,0,W,H);s.forEach(x=>{x.o+=x.sp*x.d;if(x.o>1||x.o<.1)x.d*=-1;cx.beginPath();cx.arc(x.x,x.y,x.r,0,Math.PI*2);cx.fillStyle=`rgba(180,220,255,${x.o})`;cx.fill();});requestAnimationFrame(d);}
+  window.addEventListener('resize',()=>{r();m();});r();m();d();
+})();
+
+/* ══ HEMISFERIO ════════════════════════════════════════════════ */
+function setH(h){HEM=h;$('bN').classList.toggle('on',h==='N');$('bS').classList.toggle('on',h==='S');mkLL();}
+
+/* ══ CALCULAR ══════════════════════════════════════════════════ */
+async function doCalc(){
+  const phi=parseFloat($('inp').value);
+  if(isNaN(phi)||phi<0||phi>90){alert('Latitud invalida: ingrese 0-90');return;}
+  $('spin').style.display='block';
+  try{
+    const res=await fetch('/api/calcular',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({phi,hem:HEM})});
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    const d=await res.json();lastD=d;
+    showRes(d,phi);updSimHUD(d,phi);
+    // Resetear NOAA
+    $('noaa-val').style.display='none';$('noaa-src').style.display='none';
+  }catch(e){alert('Error al conectar con Flask.\n\n'+e.message);}
+  $('spin').style.display='none';
+}
+
+/* ══ MOSTRAR ═══════════════════════════════════════════════════ */
+function showRes(d,phi){
+  const s=HEM==='S'?'-':'';
+  set('gp',s+phi+'°');set('gr',fM(d.r));set('gk',fN(d.km_r,4));set('gw',fN(d.W,4));
+  set('rv',fM(d.r)+' m');
+  set('ve',fE(d.ae));set('va',fE(d.aa));set('vi',fE(d.aa2));set('vt',fE(d.V));
+  set('vn',d.N_zonal.toFixed(3)+' m');
+  set('o0',fN(d.o0,4));set('o2',fN(d.o2,4));set('o35',fE(d.o35));set('o4',fN(d.o4,4));
+  set('oz',fN(d.Z,4));set('ot',fN(d.W,4));
+  const sec=$('resultados');sec.style.display='block';
+  $('nv-r').style.display='';
+  setTimeout(()=>sec.scrollIntoView({behavior:'smooth',block:'start'}),80);
+  mkLL();
+}
+
+/* ══ LATEX ═════════════════════════════════════════════════════ */
+function downloadLatex(){
+  if(!lastD){alert('Primero calcule el potencial.');return;}
+  const phi=parseFloat($('inp').value);
+  window.location.href=`/api/latex?phi=${phi}&hem=${HEM}`;
+}
+
+/* ══ NOAA ══════════════════════════════════════════════════════ */
+async function queryNOAA(){
+  if(!lastD){alert('Primero calcule el potencial.');return;}
+  const phi=parseFloat($('inp').value);
+  const lon=0; // meridiano central
+  const btn=$('noaa-btn');
+  btn.textContent='&#9670; CONSULTANDO...';
+  try{
+    const res=await fetch(`/api/geoide/noaa?lat=${HEM==='S'?-phi:phi}&lon=${lon}`);
+    const d=await res.json();
+    set('noaa-val','N = '+d.N.toFixed(3)+' m');
+    set('noaa-src','Fuente: '+d.source);
+    $('noaa-val').style.display='';$('noaa-src').style.display='';
+  }catch(e){set('noaa-val','Error: '+e.message);$('noaa-val').style.display='';}
+  btn.innerHTML='&#9670; CONSULTAR NOAA GEOID18';
+}
+
+/* ══ TABLA ═════════════════════════════════════════════════════ */
+async function toggleTab(){
+  const s=$('tsec');
+  if(s.classList.contains('show')){s.classList.remove('show');return;}
+  s.classList.add('show');$('nv-t').style.display='';
+  s.scrollIntoView({behavior:'smooth',block:'start'});
+  if(tabOK)return;
+  try{
+    const res=await fetch('/api/tabla');if(!res.ok)throw new Error('HTTP '+res.status);
+    const rows=await res.json();tabOK=true;
+    $('tb').innerHTML=rows.map(r=>`<tr>
+      <td>${r.phi}°</td>
+      <td>${fM(r.r)}</td>
+      <td>${fN(r.km_r,4)}</td>
+      <td class="ve">${fE(r.ae)}</td>
+      <td class="va">${fE(r.aa)}</td>
+      <td class="vi">${fE(r.aa2)}</td>
+      <td class="vt">${fN(r.V,4)}</td>
+      <td class="vn">${r.N_zonal.toFixed(3)}</td>
+    </tr>`).join('');
+  }catch(e){$('tb').innerHTML=`<tr><td colspan="8" style="color:var(--red);text-align:center;padding:30px">Error: ${e.message}</td></tr>`;}
+}
+
+function goSim(){$('simulador').scrollIntoView({behavior:'smooth'});}
+$('inp').addEventListener('keydown',e=>{if(e.key==='Enter')doCalc();});
+$('inp').addEventListener('input',mkLL);
+
+/* ══ MARCADOR LATITUD ══════════════════════════════════════════ */
+function mkLL(){
+  const phi=parseFloat($('inp').value)||0;
+  const d=$('ld'),l=$('ll');
+  if(d)d.style.top=(((1-phi/90)*100))+'%';
+  if(l)l.textContent=(HEM==='S'?'-':'')+phi.toFixed(1)+'°';
+  if(simScene)buildLat(phi,HEM);
+}
+function updSimHUD(d,phi){
+  const s=HEM==='S'?'-':'';
+  set('sp',s+phi+'°');set('sr',fM(d.r)+' m');
+  set('sv',fE(d.V)+' J/kg');set('snz',d.N_zonal.toFixed(3)+' m');
+  set('sh',HEM==='S'?'SUR':'NORTE');
+}
+
+/* ══ MODO SIMULADOR (textura / heatmap) ═══════════════════════ */
+function simMode(mode){
+  currentMode=mode;
+  $('btn-tex').classList.toggle('active',mode==='tex');
+  $('btn-heat').classList.toggle('active',mode==='heat');
+  if(!simScene)return;
+  if(mode==='tex'){
+    if(earthMesh)earthMesh.visible=true;
+    if(cloudMesh)cloudMesh.visible=true;
+    if(atmMesh)atmMesh.visible=true;
+    if(glowMesh)glowMesh.visible=true;
+    if(heatMesh)heatMesh.visible=false;
+    $('heat-legend').classList.remove('show');
+    set('sim-exag','');
+  } else {
+    if(earthMesh)earthMesh.visible=false;
+    if(cloudMesh)cloudMesh.visible=false;
+    if(atmMesh)atmMesh.visible=false;
+    if(glowMesh)glowMesh.visible=false;
+    if(heatMesh){heatMesh.visible=true;$('heat-legend').classList.add('show');}
+    else loadAndBuildHeatmap();
+    set('sim-exag','Exageracion: 8000x');
+  }
+}
+
+/* ══ INTERPOLACION BILINEAL ════════════════════════════════════ */
+/* Construye indice hash del geoide para lookup O(1) */
+function buildGeoidIndex(grid){
+  const idx={};
+  grid.forEach(p=>{
+    const k=p.lat+'|'+p.lon;
+    idx[k]=p.N;
+  });
+  return idx;
+}
+
+/* Interpolacion bilineal usando indice hash - O(1) por lookup */
+function interpGeoid(lat,lon,grid){
+  if(!geoidIdx)return 0;
+  const step=5;
+  while(lon>180)lon-=360;while(lon<-180)lon+=360;
+  // Clamp latitud a rango de la grilla
+  lat=Math.max(-85,Math.min(85,lat));
+  const lat0=Math.floor(lat/step)*step;
+  const lon0=Math.floor(lon/step)*step;
+  function gN(la,lo){
+    while(lo>180)lo-=360;while(lo<-180)lo+=360;
+    la=Math.max(-85,Math.min(85,la));
+    // Redondear al multiplo de step mas cercano
+    la=Math.round(la/step)*step;
+    lo=Math.round(lo/step)*step;
+    while(lo>180)lo-=360;
+    const v=geoidIdx[la+'|'+lo];
+    return v!==undefined?v:0;
+  }
+  const n00=gN(lat0,lon0);const n10=gN(lat0+step,lon0);
+  const n01=gN(lat0,lon0+step);const n11=gN(lat0+step,lon0+step);
+  const u=(lat-lat0)/step;const v2=(lon-lon0)/step;
+  return n00*(1-u)*(1-v2)+n10*u*(1-v2)+n01*(1-u)*v2+n11*u*v2;
+}
+
+/* Mapa de color divergente: azul(-) → blanco(0) → rojo(+) */
+function nToColor(N,Nmin,Nmax){
+  const t=(N-Nmin)/(Nmax-Nmin);
+  const z=-Nmin/(Nmax-Nmin);
+  let r,g,b;
+  if(t<=z){
+    const s=t/z;
+    r=s*.3;g=s*.7;b=1;
+  } else {
+    const s=(t-z)/(1-z);
+    r=1;g=1-s*.85;b=1-s;
+  }
+  return [Math.max(0,Math.min(1,r)),Math.max(0,Math.min(1,g)),Math.max(0,Math.min(1,b))];
+}
+
+async function loadAndBuildHeatmap(){
+  set('sld-sub','Cargando grilla del geoide (2555 puntos)...');
+  $('sld').classList.remove('hidden');
+  try{
+    const res=await fetch('/api/geoide/grid');
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    geoidGrid=await res.json();
+    // Construir indice hash para lookup O(1) - evita congelar el browser
+    geoidIdx=buildGeoidIndex(geoidGrid);
+    geoidLoaded=true;
+    set('sld-sub','Construyendo malla del geoide...');
+    // Defer para que el DOM se actualice antes del calculo intensivo
+    await new Promise(r=>setTimeout(r,50));
+    buildHeatmapMesh();
+  }catch(e){
+    console.error('Geoid grid error:',e);
+    set('sld-sub','Error: '+e.message);
+    await new Promise(r=>setTimeout(r,2000));
+  }
+  $('sld').classList.add('hidden');
+}
+
+function buildHeatmapMesh(){
+  if(!simScene||!geoidGrid)return;
+  if(heatMesh){simScene.remove(heatMesh);heatMesh.geometry.dispose();heatMesh.material.dispose();}
+
+  const Ns=geoidGrid.map(p=>p.N);
+  const Nmin=Math.min(...Ns);const Nmax=Math.max(...Ns);
+  set('hl-min',Nmin.toFixed(0)+'m');set('hl-max','+'+Nmax.toFixed(0)+'m');
+
+  // Factor de exageracion: 8000x para replicar imagen ESA/GOCE
+  // N real es ±100m sobre radio de 6378km -> invisible sin exageracion
+  const EXAG = 8000;
+  const SCALE = EXAG / 6378137; // metros de N -> unidades Three.js
+
+  // Alta resolucion para superficie suave
+  const geo=new THREE.SphereGeometry(1,180,90);
+  const pos=geo.attributes.position;
+  const cols=new Float32Array(pos.count*3);
+
+  for(let i=0;i<pos.count;i++){
+    const x=pos.getX(i),y=pos.getY(i),z=pos.getZ(i);
+    const len=Math.sqrt(x*x+y*y+z*z);
+
+    // Latitud y longitud del vertice
+    const lat=Math.asin(Math.max(-1,Math.min(1,y/len)))*180/Math.PI;
+    const lon=Math.atan2(z,x)*180/Math.PI;
+
+    // Undulacion del geoide en este punto
+    const N=interpGeoid(lat,lon,null); // usa geoidIdx internamente
+
+    // DEFORMACION RADIAL: mover el vertice segun N
+    const newR=1.0+N*SCALE;
+    pos.setXYZ(i,(x/len)*newR,(y/len)*newR,(z/len)*newR);
+
+    // Color segun N (arcoiris igual que imagen NASA/ESA)
+    const [r,g,b]=nToColor(N,Nmin,Nmax);
+    cols[i*3]=r;cols[i*3+1]=g;cols[i*3+2]=b;
+  }
+  pos.needsUpdate=true;
+  geo.computeVertexNormals(); // recalcular normales tras deformacion
+
+  geo.setAttribute('color',new THREE.Float32BufferAttribute(cols,3));
+
+  // MeshPhongMaterial para tener iluminacion 3D y ver la forma del geoide
+  const mat=new THREE.MeshPhongMaterial({
+    vertexColors:true,
+    shininess:45,
+    specular:new THREE.Color(0.12,0.12,0.12),
+  });
+
+  heatMesh=new THREE.Mesh(geo,mat);
+  heatMesh.visible=(currentMode==='heat');
+  simScene.add(heatMesh);
+
+  if(currentMode==='heat'){
+    $('heat-legend').classList.add('show');
+    set('sim-exag','Exageracion: 8000x');
+  }
+}
+
+/* ══ SIMULADOR THREE.JS ════════════════════════════════════════ */
+function initSim(){
+  if(simInit)return;simInit=true;
+  const canvas=$('sim-canvas');
+  const W=canvas.clientWidth||window.innerWidth;
+  const H=canvas.clientHeight||window.innerHeight;
+  const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:false});
+  renderer.setSize(W,H);renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+  renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.1;
+  const scene=new THREE.Scene();simScene=scene;
+  const camera=new THREE.PerspectiveCamera(38,W/H,.1,500);
+  camera.position.set(0,0,3.1);
+  window.addEventListener('resize',()=>{
+    const w=canvas.clientWidth,h=canvas.clientHeight;
+    renderer.setSize(w,h);camera.aspect=w/h;camera.updateProjectionMatrix();
+  });
+  const sun=new THREE.DirectionalLight(0xfff5e0,2.0);sun.position.set(6,3,5);scene.add(sun);
+  scene.add(new THREE.AmbientLight(0x112255,.5));
+  scene.add(new THREE.HemisphereLight(0x0033aa,0x000000,.25));
+  const tx=new THREE.TextureLoader();
+  const BASE='https://unpkg.com/three@0.128.0/examples/textures/planets/';
+
+  // Tierra
+  const eMat=new THREE.MeshPhongMaterial({
+    map:tx.load(BASE+'earth_atmos_2048.jpg'),
+    specularMap:tx.load(BASE+'earth_specular_2048.jpg'),
+    normalMap:tx.load(BASE+'earth_normal_2048.jpg'),
+    normalScale:new THREE.Vector2(.5,.5),
+    specular:new THREE.Color(.15,.25,.5),shininess:30,
+  });
+  earthMesh=new THREE.Mesh(new THREE.SphereGeometry(1,64,64),eMat);scene.add(earthMesh);
+
+  // Nubes
+  const cMat=new THREE.MeshPhongMaterial({map:tx.load(BASE+'earth_clouds_1024.png'),transparent:true,opacity:.5,depthWrite:false});
+  cloudMesh=new THREE.Mesh(new THREE.SphereGeometry(1.007,64,64),cMat);scene.add(cloudMesh);
+
+  // Atmosfera + halo (trackeados para ocultarlos en modo geoide)
+  atmMesh=new THREE.Mesh(new THREE.SphereGeometry(1.06,64,64),new THREE.MeshPhongMaterial({color:0x0055ff,emissive:0x001888,transparent:true,opacity:.09,side:THREE.FrontSide,depthWrite:false}));
+  scene.add(atmMesh);
+  glowMesh=new THREE.Mesh(new THREE.SphereGeometry(1.16,32,32),new THREE.MeshBasicMaterial({color:0x000a22,transparent:true,opacity:.2,side:THREE.BackSide}));
+  scene.add(glowMesh);
+
+  // Estrellas
+  const sp=[];for(let i=0;i<2000;i++){const a=Math.acos(2*Math.random()-1),b=Math.random()*Math.PI*2,r=85+Math.random()*25;sp.push(r*Math.sin(a)*Math.cos(b),r*Math.cos(a),r*Math.sin(a)*Math.sin(b));}
+  const sg=new THREE.BufferGeometry();sg.setAttribute('position',new THREE.Float32BufferAttribute(sp,3));
+  scene.add(new THREE.Points(sg,new THREE.PointsMaterial({color:0xffffff,size:.22,transparent:true,opacity:.85})));
+
+  // Grilla geocentrica
+  const gm=new THREE.LineBasicMaterial({color:0x0c2844,transparent:true,opacity:.6});
+  [-60,-30,0,30,60].forEach(lat=>{
+    const p=[];for(let i=0;i<=128;i++){const lo=i/128*Math.PI*2,la=THREE.MathUtils.degToRad(lat);p.push(new THREE.Vector3(1.005*Math.cos(la)*Math.cos(lo),1.005*Math.sin(la),1.005*Math.cos(la)*Math.sin(lo)));}
+    scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(p),gm));
+  });
+  for(let lo=0;lo<360;lo+=30){
+    const p=[];for(let i=0;i<=64;i++){const la=(i/64-.5)*Math.PI,loR=THREE.MathUtils.degToRad(lo);p.push(new THREE.Vector3(1.005*Math.cos(la)*Math.cos(loR),1.005*Math.sin(la),1.005*Math.cos(la)*Math.sin(loR)));}
+    scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(p),gm));
+  }
+  const ep=[];for(let i=0;i<=128;i++){const lo=i/128*Math.PI*2;ep.push(new THREE.Vector3(1.007*Math.cos(lo),0,1.007*Math.sin(lo)));}
+  scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(ep),new THREE.LineBasicMaterial({color:0x0099dd,transparent:true,opacity:.9})));
+
+  buildLat(parseFloat($('inp').value)||10,'N');
+
+  // Drag
+  let drag=false,lx=0,ly=0,ry=0,rx=0;
+  renderer.domElement.addEventListener('mousedown',e=>{drag=true;lx=e.clientX;ly=e.clientY;});
+  window.addEventListener('mouseup',()=>{drag=false;});
+  window.addEventListener('mousemove',e=>{if(!drag)return;ry+=(e.clientX-lx)*.005;rx+=(e.clientY-ly)*.003;rx=Math.max(-1.2,Math.min(1.2,rx));lx=e.clientX;ly=e.clientY;});
+  renderer.domElement.addEventListener('touchstart',e=>{drag=true;lx=e.touches[0].clientX;},{passive:true});
+  window.addEventListener('touchend',()=>{drag=false;});
+  window.addEventListener('touchmove',e=>{if(!drag)return;ry+=(e.touches[0].clientX-lx)*.005;lx=e.touches[0].clientX;},{passive:true});
+
+  let ar=0;
+  function anim(){
+    simAnim=requestAnimationFrame(anim);
+    if(!drag)ar+=.0022;
+    earthMesh.rotation.y=ar+ry;earthMesh.rotation.x=rx;
+    cloudMesh.rotation.y=ar+ry+.0003;cloudMesh.rotation.x=rx;
+    if(heatMesh){heatMesh.rotation.y=ar+ry;heatMesh.rotation.x=rx;}
+    if(latGrp){latGrp.rotation.y=ar+ry;latGrp.rotation.x=rx;}
+    renderer.render(scene,camera);
+  }
+  anim();
+  setTimeout(()=>$('sld').classList.add('hidden'),2200);
+}
+
+function buildLat(phiDeg,hem){
+  if(!simScene)return;
+  if(latGrp){simScene.remove(latGrp);latGrp.traverse(c=>{if(c.geometry)c.geometry.dispose();if(c.material)c.material.dispose();});}
+  const g=new THREE.Group();
+  const phi=THREE.MathUtils.degToRad(hem==='S'?-phiDeg:phiDeg);
+  const p=[];for(let i=0;i<=256;i++){const lo=i/256*Math.PI*2;p.push(new THREE.Vector3(1.015*Math.cos(phi)*Math.cos(lo),1.015*Math.sin(phi),1.015*Math.cos(phi)*Math.sin(lo)));}
+  g.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(p),new THREE.LineBasicMaterial({color:0xff6b1a})));
+  const px=1.022*Math.cos(phi),py=1.022*Math.sin(phi);
+  const dot=new THREE.Mesh(new THREE.SphereGeometry(.022,16,16),new THREE.MeshBasicMaterial({color:0xff6b1a}));
+  dot.position.set(px,py,0);g.add(dot);
+  const halo=new THREE.Mesh(new THREE.SphereGeometry(.044,16,16),new THREE.MeshBasicMaterial({color:0xff4400,transparent:true,opacity:.22}));
+  halo.position.set(px,py,0);g.add(halo);
+  [[1.04,0x00c8ff],[1.09,0x00f5d4],[1.16,0xffd166]].forEach(([r,c])=>{
+    const ap=[];for(let j=0;j<=128;j++){const lo=j/128*Math.PI*2;ap.push(new THREE.Vector3(r*Math.cos(phi)*Math.cos(lo),r*Math.sin(phi),r*Math.cos(phi)*Math.sin(lo)));}
+    g.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(ap),new THREE.LineBasicMaterial({color:c,transparent:true,opacity:.22})));
+  });
+  latGrp=g;simScene.add(g);
+}
+
+new IntersectionObserver(entries=>{if(entries[0].isIntersecting)initSim();},{threshold:.05}).observe($('simulador'));
+</script>
+</body>
+</html>
